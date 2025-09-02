@@ -29,21 +29,34 @@ data "aws_iam_role" "sagemaker_role" {
 # Note: IAM role and policy attachments are managed outside of Terraform for existing roles
 
 
-# SageMaker Model - use data source to reference existing model
-data "aws_sagemaker_model" "model" {
-  name = "${local.name}-model"
+# SageMaker Model
+resource "aws_sagemaker_model" "model" {
+  name = "${local.name}-model-v2"
+  execution_role_arn = data.aws_iam_role.sagemaker_role.arn
+  primary_container {
+    image = var.ecr_image_uri
+    mode = "SingleModel"
+    model_data_url = var.model_data_url
+    container_hostname = "inference"
+    environment = { "CW_NAMESPACE" = "${local.name}" }
+  }
 }
 
-
-# SageMaker Endpoint Configuration - use data source to reference existing config
-data "aws_sagemaker_endpoint_configuration" "cfg" {
-  name = "${local.name}-cfg"
+# SageMaker Endpoint Configuration
+resource "aws_sagemaker_endpoint_configuration" "cfg" {
+  name = "${local.name}-cfg-v2"
+  production_variants {
+    variant_name = "All"
+    model_name = aws_sagemaker_model.model.name
+    initial_instance_count = 1
+    instance_type = var.instance_type
+  }
 }
 
-
-# SageMaker Endpoint - use data source to reference existing endpoint
-data "aws_sagemaker_endpoint" "ep" {
-  name = "${local.name}-ep"
+# SageMaker Endpoint
+resource "aws_sagemaker_endpoint" "ep" {
+  name = "${local.name}-ep-v2"
+  endpoint_config_name = aws_sagemaker_endpoint_configuration.cfg.name
 }
 
 
