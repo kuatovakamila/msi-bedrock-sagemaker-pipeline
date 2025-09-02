@@ -8,16 +8,16 @@ provider "aws" { region = var.region }
 locals { name = var.project_name }
 
 
-# Buckets
-module "artifacts" {
-source = "terraform-aws-modules/s3-bucket/aws"
-bucket = "${local.name}-artifacts-${var.account_id}"
-force_destroy = true
+# S3 Bucket - use data source to reference existing bucket
+data "aws_s3_bucket" "artifacts" {
+  bucket = "${local.name}-artifacts-${var.account_id}"
 }
 
 
-# ECR for inference image
-resource "aws_ecr_repository" "inference" { name = "${local.name}-inference" }
+# ECR for inference image - use data source to reference existing repository
+data "aws_ecr_repository" "inference" { 
+  name = "${local.name}-inference"
+}
 
 
 # IAM: SageMaker Execution Role (simplified managed policies; tighten later)

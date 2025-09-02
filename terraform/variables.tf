@@ -21,7 +21,7 @@ variable "model_data_url" {
 
 variable "instance_type" {
   type    = string
-  default = "ml.m5.large"
+  default = "ml.t2.medium"
 }
 
 variable "cw_namespace" {
