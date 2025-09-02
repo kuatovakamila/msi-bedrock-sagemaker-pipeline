@@ -21,29 +21,12 @@ data "aws_ecr_repository" "inference" {
 
 
 # IAM: SageMaker Execution Role (simplified managed policies; tighten later)
-resource "aws_iam_role" "sagemaker_role" {
-name = "${local.name}-sagemaker-role"
-assume_role_policy = data.aws_iam_policy_document.sagemaker_assume.json
+data "aws_iam_role" "sagemaker_role" {
+  name = "${local.name}-sagemaker-role"
 }
 
 
-data "aws_iam_policy_document" "sagemaker_assume" {
-  statement {
-    actions = ["sts:AssumeRole"]
-    principals {
-      type        = "Service"
-      identifiers = ["sagemaker.amazonaws.com"]
-    }
-  }
-}
-resource "aws_iam_role_policy_attachment" "sm_full" {
-role = aws_iam_role.sagemaker_role.name
-policy_arn = "arn:aws:iam::aws:policy/AmazonSageMakerFullAccess"
-}
-resource "aws_iam_role_policy_attachment" "s3_read" {
-role = aws_iam_role.sagemaker_role.name
-policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
-}
+# Note: IAM role and policy attachments are managed outside of Terraform for existing roles
 
 
 # SageMaker Model
