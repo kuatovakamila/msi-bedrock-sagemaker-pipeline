@@ -1,4 +1,4 @@
-import argparse, numpy as np, pandas as pd
+import argparse, numpy as np, pandas as pd, os
 from numpy.random import default_rng
 
 rng = default_rng(7) 
@@ -29,6 +29,9 @@ if __name__ == "__main__":
     parser.add_argument("--anomaly_fraction",default=0.05,type=float)
     args= parser.parse_args()
     df = synth(args.n, args.anomaly_fraction)
+    
+    # Create output directory if it doesn't exist
+    os.makedirs(os.path.dirname(args.out), exist_ok=True)
     df.to_csv(args.out, index = False)
     print(f"Wrote {args.out}, shape: {df.shape}")
     
