@@ -1,0 +1,65 @@
+name: ci-cd
+on:
+  workflow_dispatch:
+    inputs:
+      RUN_DEPLOY:
+        description: "Run full deploy"
+        required: false
+        default: "true"
+        type: choice
+        options: ["true","false"]
+
+
+jobs:
+  build-train-deploy:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      S3_ARTIFACTS_BUCKET: msi-anomaly-artifacts-${{ secrets.AWS_ACCOUNT_ID }}
+      IMAGE_NAME: msi-anomaly-inference
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Install trainer deps
+        run: |
+          pip install -U pip
+          pip install scikit-learn optuna pandas numpy joblib boto3
+      - name: Generate data & train
+        run: |
+          python src/data/generate_telematics.py --out data/telematics.csv
+          python src/train.py --data data/telematics.csv --out artifacts/model.tar.gz --metrics_out artifacts/metrics.json
+      - name: Show metrics
+        run: cat artifacts/metrics.json
+      - name: Configure AWS creds
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Upload model to S3
+        run: |
+          aws s3 mb s3://$S3_ARTIFACTS_BUCKET || true
+          aws s3 cp artifacts/model.tar.gz s3://$S3_ARTIFACTS_BUCKET/model/model.tar.gz
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build & Push image
+        run: |
+          IMAGE_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest
+          docker build -t $IMAGE_URI src/inference_service
+          docker push $IMAGE_URI
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+      - name: Terraform init/plan/apply
+        if: inputs.RUN_DEPLOY == 'true'
+        uses: hashicorp/setup-terraform@v3
+      - name: Terraform Apply
+        if: inputs.RUN_DEPLOY == 'true'
+        working-directory: terraform
+        run: |
+          terraform init
+          terraform apply -auto-approve \
+            -var="region=$AWS_REGION" \
+            -var="account_id=$AWS_ACCOUNT_ID" \
+            -var="ecr_image_uri=${IMAGE_URI}" \
+            -var="model_data_url=s3://$S3_ARTIFACTS_BUCKET/model/model.tar.gz"
