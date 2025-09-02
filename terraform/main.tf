@@ -32,7 +32,7 @@ data "aws_iam_role" "sagemaker_role" {
 # SageMaker Model
 resource "aws_sagemaker_model" "model" {
 name = "${local.name}-model"
-execution_role_arn = aws_iam_role.sagemaker_role.arn
+execution_role_arn = data.aws_iam_role.sagemaker_role.arn
 primary_container {
 image = var.ecr_image_uri
 mode = "SingleModel"
