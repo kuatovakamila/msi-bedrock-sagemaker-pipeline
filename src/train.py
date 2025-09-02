@@ -24,13 +24,36 @@ def train_eval(df):
         model.fit(xtr)
         pred = (model.predict(xte) ==-1).astype(int)
         scores = -model.decision_function(xte)
-        return model, roc_auc_score(yte, scores), f1_score(yte, pred)
+        return model, {"roc_auc": roc_auc_score(yte, scores), "f1": f1_score(yte, pred)}
     
     if optuna:
         def obj(trial):
-            n_estimators = trial.suggest_float("n_estimators", 50, 300)
-            max_samples = trial.suggest_foat("max_samples", 0.1, 1.0)
-            contamination = trial.suggest_float("contamination", 0.01,0.15)
+            n_estimators = trial.suggest_int("n_estimators", 50, 300)
+            max_samples = trial.suggest_float("max_samples", 0.1, 1.0)
+            contamination = trial.suggest_float("contamination", 0.01, 0.15)
+            
+            model = IsolationForest(
+                n_estimators=n_estimators,
+                max_samples=max_samples,
+                contamination=contamination,
+                random_state=7
+            )
+            model.fit(xtr)
+            pred = (model.predict(xte) == -1).astype(int)
+            scores = -model.decision_function(xte)
+            return roc_auc_score(yte, scores)
+        
+        study = optuna.create_study(direction='maximize')
+        study.optimize(obj, n_trials=10)
+        best_params = study.best_params
+        
+        model = IsolationForest(**best_params, random_state=7)
+        model.fit(xtr)
+        pred = (model.predict(xte) == -1).astype(int)
+        scores = -model.decision_function(xte)
+        return model, {"roc_auc": roc_auc_score(yte, scores), "f1": f1_score(yte, pred)}
+    else:
+        return fit_predict()
 
 
 if __name__ == "__main__":
