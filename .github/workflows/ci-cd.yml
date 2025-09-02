@@ -44,6 +44,10 @@ jobs:
           aws s3 cp artifacts/model.tar.gz s3://$S3_ARTIFACTS_BUCKET/model/model.tar.gz
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
+      - name: Create ECR repository
+        run: |
+          aws ecr describe-repositories --repository-names $IMAGE_NAME --region $AWS_REGION || \
+          aws ecr create-repository --repository-name $IMAGE_NAME --region $AWS_REGION
       - name: Build & Push image
         run: |
           IMAGE_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest
