@@ -5,7 +5,10 @@ required_providers { aws = { source = "hashicorp/aws", version = ">= 5.0" } }
 provider "aws" { region = var.region }
 
 
-locals { name = var.project_name }
+locals { 
+  name = var.project_name
+  timestamp = formatdate("YYYYMMDD-hhmm", timestamp())
+}
 
 
 # S3 Bucket - use data source to reference existing bucket
@@ -31,7 +34,7 @@ data "aws_iam_role" "sagemaker_role" {
 
 # SageMaker Model
 resource "aws_sagemaker_model" "model" {
-  name = "${local.name}-model-v2"
+  name = "${local.name}-model-${local.timestamp}"
   execution_role_arn = data.aws_iam_role.sagemaker_role.arn
   primary_container {
     image = var.ecr_image_uri
@@ -44,7 +47,7 @@ resource "aws_sagemaker_model" "model" {
 
 # SageMaker Endpoint Configuration
 resource "aws_sagemaker_endpoint_configuration" "cfg" {
-  name = "${local.name}-cfg-v2"
+  name = "${local.name}-cfg-${local.timestamp}"
   production_variants {
     variant_name = "All"
     model_name = aws_sagemaker_model.model.name
@@ -55,7 +58,7 @@ resource "aws_sagemaker_endpoint_configuration" "cfg" {
 
 # SageMaker Endpoint
 resource "aws_sagemaker_endpoint" "ep" {
-  name = "${local.name}-ep-v2"
+  name = "${local.name}-ep-${local.timestamp}"
   endpoint_config_name = aws_sagemaker_endpoint_configuration.cfg.name
 }
 
