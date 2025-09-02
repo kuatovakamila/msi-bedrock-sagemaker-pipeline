@@ -28,7 +28,13 @@ assume_role_policy = data.aws_iam_policy_document.sagemaker_assume.json
 
 
 data "aws_iam_policy_document" "sagemaker_assume" {
-statement { actions=["sts:AssumeRole"], principals{ type="Service" identifiers=["sagemaker.amazonaws.com"] } }
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["sagemaker.amazonaws.com"]
+    }
+  }
 }
 resource "aws_iam_role_policy_attachment" "sm_full" {
 role = aws_iam_role.sagemaker_role.name
